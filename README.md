@@ -1,2 +1,3 @@
-# ArtFontMaker
-Art Font Maker For Unity
+# 艺术字体编辑器
+
+配合Unity使用的编辑器，可以为Unity工程创建艺术字
