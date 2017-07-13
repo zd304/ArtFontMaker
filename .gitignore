@@ -2,3 +2,8 @@
 /*.sdf
 Temp
 Bin_Debug
+/*.opensdf
+*.ini
+*.user
+*.aps
+*.pdb
