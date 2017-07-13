@@ -211,4 +211,93 @@ namespace EditorUtility
 			output.append(inputpath[i]).append("\\");
 		}
 	}
+
+	void split(const std::string& str, const char* c, std::vector<std::string>& res)
+	{
+		char *cstr, *p;
+		cstr = new char[str.size() + 1];
+		strcpy(cstr, str.c_str());
+		p = strtok(cstr, c);
+		while (p != NULL)
+		{
+			res.push_back(p);
+			p = strtok(NULL, c);
+		}
+	}
+
+	bool ToRelPath(const std::string& absPath, const std::string& refPath, std::string& output)
+	{
+		std::vector<std::string> absVec;
+		std::vector<std::string> refVec;
+		EditorUtility::split(absPath, "\\", absVec);
+		EditorUtility::split(refPath, "\\", refVec);
+
+		size_t index = 0;
+		size_t minSize = std::min<size_t>(absVec.size(), refVec.size());
+		for (index = 0; index < minSize; ++index)
+		{
+			if (absVec[index] != refVec[index])
+			{
+				++index;
+				break;
+			}
+		}
+		if (index == 0)
+		{
+			return false;
+		}
+		output = "";
+		for (size_t i = index; i < refVec.size(); ++i)
+		{
+			output += "..\\";
+		}
+		for (size_t i = index; i < absVec.size(); ++i)
+		{
+			output += absVec[i];
+			output += "\\";
+		}
+		if (output.length() == 0)
+		{
+			output = ".";
+		}
+		else if (output[output.length() - 1] == '\\')
+		{
+			output = output.substr(0, output.length() - 1);
+		}
+		return true;
+	}
+
+	bool ToAbsPath(const std::string& relPath, const std::string& refPath, std::string& output)
+	{
+		std::vector<std::string> relVec;
+		std::vector<std::string> refVec;
+		EditorUtility::split(relPath, "\\", relVec);
+		EditorUtility::split(refPath, "\\", refVec);
+		output = "";
+
+		for (size_t i = 0; i < relVec.size(); ++i)
+		{
+			std::string& f = relVec[i];
+			if (f == ".")
+			{
+				continue;
+			}
+			else if (f == "..")
+			{
+				refVec.erase(refVec.begin() + (refVec.size() - 1));
+			}
+			else
+			{
+				refVec.push_back(f);
+			}
+		}
+
+		for (size_t i = 0; i < refVec.size(); ++i)
+		{
+			output += refVec[i];
+			if (i < refVec.size() - 1)
+				output += "\\";
+		}
+		return true;
+	}
 }

@@ -58,10 +58,12 @@ public:
 	int mDefaultSize;
 	LPDIRECT3DTEXTURE9 mTargetTexture;
 	LPD3DXMESH mMesh;
+	bool mOpenByAbsPath;
+	std::string mProjectDirectory;
 private:
 	float angle;
 	float tt[3];
 	bool mShowTargetTex;
 	bool mCodeCalcTool;
-	std::string mCodeTxt;
+	std::string mCodeTxt;	
 };

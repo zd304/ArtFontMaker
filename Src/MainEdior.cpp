@@ -134,6 +134,8 @@ MainEditor::MainEditor(HWND hwnd, LPDIRECT3DDEVICE9 device)
 	GetClientRect(hwnd, &rc);
 	mWidth = (float)(rc.right - rc.left);
 	mHeight = (float)(rc.bottom - rc.top);
+
+	mOpenByAbsPath = false;
 }
 
 MainEditor::~MainEditor()
@@ -553,6 +555,7 @@ void MainEditor::OnGUI()
 	if (mFdCfg.DoModal())
 	{
 		std::string cfg = mFdCfg.directory;
+		mProjectDirectory = mFdCfg.directory;
 		cfg += mFdCfg.fileName;
 		OpenCfg(this, cfg.c_str());
 		memset(mFdSaveCfg.directory, 0, MAX_PATH);
@@ -810,7 +813,9 @@ void SaveCfg(MainEditor* editor, const char* cfg)
 
 			TiXmlElement* font_ele = new TiXmlElement("font");
 			font_ele->SetAttribute("code", artFont->mCode);
-			font_ele->SetAttribute("path", artFont->mPath.c_str());
+			std::string relPath;
+			EditorUtility::ToRelPath(artFont->mPath, editor->mProjectDirectory, relPath);
+			font_ele->SetAttribute("path", relPath.c_str());
 			group_ele->LinkEndChild(font_ele);
 		}
 
@@ -860,7 +865,11 @@ void OpenCfg(MainEditor* editor, const char* cfg)
 			while (fontEle)
 			{
 				int code = atoi(fontEle->Attribute("code"));
-				ArtFont* artFont = new ArtFont(code, fontEle->Attribute("path"));
+				std::string relPath = fontEle->Attribute("path");
+				std::string absPath = relPath;
+				if (!editor->mOpenByAbsPath)
+					EditorUtility::ToAbsPath(relPath, editor->mProjectDirectory, absPath);
+				ArtFont* artFont = new ArtFont(code, absPath.c_str());
 				group->mFontDatas.push_back(artFont);
 				fontEle = fontEle->NextSiblingElement("font");
 			}
@@ -911,6 +920,7 @@ void MainEditor::OnMenu()
 			{
 				exportFlag = true;
 			}
+			ImGui::MenuItem(STU("按绝对路径打开"), NULL, &mOpenByAbsPath);
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu(STU("工具")))

@@ -22,6 +22,11 @@ namespace EditorUtility
 	std::string UTF8_To_string(const std::string& str);
 	void StringReplace(std::string &strBase, const std::string& strSrc, const std::string& strDes);
 	void PathChange(const std::string& input, std::string& output);
+
+	void split(const std::string& str, const char* c, std::vector<std::string>& res);
+
+	bool ToRelPath(const std::string& absPath, const std::string& refPath, std::string& output);
+	bool ToAbsPath(const std::string& relPath, const std::string& refPath, std::string& output);
 };
 
 #define STUC(x, l) EditorUtility::string_To_UTF8_C(x, l)
