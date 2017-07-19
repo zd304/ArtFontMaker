@@ -52,6 +52,9 @@
     <ClCompile Include="TinyXML\tinyxmlparser.cpp">
       <Filter>TinyXML</Filter>
     </ClCompile>
+    <ClCompile Include="FontAtlasSeparate.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EditorDef.h">
@@ -91,6 +94,9 @@
       <Filter>TinyXML</Filter>
     </ClInclude>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="FontAtlasSeparate.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ArtFontMaker.rc">

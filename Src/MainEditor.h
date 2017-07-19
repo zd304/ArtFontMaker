@@ -2,6 +2,7 @@
 
 #include "EditorDef.h"
 #include "FileDialog.h"
+#include "FontAtlasSeparate.h"
 
 class ArtFont
 {
@@ -43,7 +44,7 @@ public:
 	void CreateTargetTexture();
 private:
 	void OnMenu();
-	void OnCodeCalTool();
+	void OnFAS();
 public:
 	HWND mHwnd;
 	float mWidth;
@@ -53,6 +54,8 @@ public:
 	FileDialog mFdCfg;
 	FileDialog mFdSaveCfg;
 	FileDialog mFdExport;
+	FileDialog mFdLoadFnt;
+	FileDialog mFdSaveTexs;
 	std::vector<ArtFontGroup*> mArtFontGroups;
 	int mTargetSize[2];
 	int mDefaultSize;
@@ -60,10 +63,11 @@ public:
 	LPD3DXMESH mMesh;
 	bool mOpenByAbsPath;
 	std::string mProjectDirectory;
+	FontAtlasSeparate* mFAS;
+	bool mShowFAS;
 private:
 	float angle;
 	float tt[3];
 	bool mShowTargetTex;
-	bool mCodeCalcTool;
-	std::string mCodeTxt;	
+	std::string mCodeTxt;
 };

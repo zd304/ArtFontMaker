@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <fstream>
 #include <direct.h>
+#include <map>
 
 namespace EditorUtility
 {

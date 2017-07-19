@@ -3,6 +3,8 @@
 static bool openCfgFlag = false;
 static bool saveCfgFlag = false;
 static bool exportFlag = false;
+static bool loadFntFlag = false;
+static bool saveTexsFlag = false;
 
 ArtFont::ArtFont(int code, const char* szPath)
 {
@@ -104,12 +106,17 @@ MainEditor::MainEditor(HWND hwnd, LPDIRECT3DDEVICE9 device)
 	mFdCfg.ext = "cfg";
 	mFdSaveCfg.ext = "cfg";
 	mFdExport.ext = "*";
+	mFdLoadFnt.ext = "fnt";
+	mFdSaveTexs.ext = "*";
 	mFdPng.dlgName = "选择图片";
 	mFdCfg.dlgName = "选择项目";
 	mFdSaveCfg.dlgName = "保存项目";
 	mFdExport.dlgName = "导出文件";
+	mFdLoadFnt.dlgName = "拆解字体图集";
+	mFdSaveTexs.dlgName = "保存字体拆分图片";
 	mFdSaveCfg.mUsage = eFileDialogUsage_SaveFile;
 	mFdExport.mUsage = eFileDialogUsage_OpenFolder;
+	mFdSaveTexs.mUsage = eFileDialogUsage_OpenFolder;
 	mTargetTexture = NULL;
 	mMesh = NULL;
 
@@ -118,7 +125,7 @@ MainEditor::MainEditor(HWND hwnd, LPDIRECT3DDEVICE9 device)
 	tt[2] = 50;
 	angle = 0.0f;
 	mShowTargetTex = false;
-	mCodeCalcTool = false;
+	mShowFAS = true;
 
 	char szPath[MAX_PATH] = { 0 };
 	GetCurrentDirectory(MAX_PATH, szPath);
@@ -129,6 +136,8 @@ MainEditor::MainEditor(HWND hwnd, LPDIRECT3DDEVICE9 device)
 	mFdCfg.SetDefaultDirectory(sCurPath);
 	mFdSaveCfg.SetDefaultDirectory(sCurPath);
 	mFdExport.SetDefaultDirectory(sCurPath);
+	mFdLoadFnt.SetDefaultDirectory(sCurPath);
+	mFdSaveTexs.SetDefaultDirectory(sCurPath);
 
 	RECT rc;
 	GetClientRect(hwnd, &rc);
@@ -136,6 +145,7 @@ MainEditor::MainEditor(HWND hwnd, LPDIRECT3DDEVICE9 device)
 	mHeight = (float)(rc.bottom - rc.top);
 
 	mOpenByAbsPath = false;
+	mFAS = NULL;
 }
 
 MainEditor::~MainEditor()
@@ -154,6 +164,7 @@ MainEditor::~MainEditor()
 		mTargetTexture->Release();
 		mTargetTexture = NULL;
 	}
+	SAFE_DELETE(mFAS);
 }
 
 struct VERTEX
@@ -296,6 +307,8 @@ void MainEditor::OnEnable()
 void OpenCfg(MainEditor* editor, const char* cfg);
 void SaveCfg(MainEditor* editor, const char* cfg);
 void ExportFiles(MainEditor* editor, const char* path);
+void LoadFnt(MainEditor* editor, const char* cfg);
+void SaveTexs(MainEditor* editor, const char* cfg);
 
 void MainEditor::OnGUI()
 {
@@ -588,6 +601,30 @@ void MainEditor::OnGUI()
 		ExportFiles(this, path.c_str());
 	}
 
+	if (loadFntFlag)
+	{
+		loadFntFlag = false;
+		mFdLoadFnt.Open();
+	}
+	if (mFdLoadFnt.DoModal())
+	{
+		std::string path = mFdLoadFnt.directory;
+		path += mFdLoadFnt.fileName;
+		LoadFnt(this, path.c_str());
+	}
+
+	if (saveTexsFlag)
+	{
+		saveTexsFlag = false;
+		mFdSaveTexs.Open();
+	}
+	if (mFdSaveTexs.DoModal())
+	{
+		std::string path = mFdSaveTexs.directory;
+		path += mFdSaveTexs.fileName;
+		SaveTexs(this, path.c_str());
+	}
+
 	ImGui::End();
 
 	if (mTargetTexture && mShowTargetTex)
@@ -614,7 +651,7 @@ void MainEditor::OnGUI()
 		ImGui::End();
 	}
 
-	OnCodeCalTool();
+	OnFAS();
 
 	Global::mItemID = 0;
 }
@@ -881,11 +918,47 @@ void OpenCfg(MainEditor* editor, const char* cfg)
 	}
 }
 
+void LoadFnt(MainEditor* editor, const char* cfg)
+{
+	if (editor->mFAS != NULL)
+	{
+		SAFE_DELETE(editor->mFAS);
+	}
+	editor->mFAS = new FontAtlasSeparate(editor->mDevice);
+	editor->mShowFAS = true;
+
+	editor->mFAS->LoadFnt(cfg);
+}
+
+void SaveTexs(MainEditor* editor, const char* cfg)
+{
+	std::string path = cfg;
+	std::map<int, IDirect3DTexture9*>::iterator it;
+	char fileTxt[64];
+	for (it = editor->mFAS->mTexs.begin(); it != editor->mFAS->mTexs.end(); ++it)
+	{
+		IDirect3DTexture9* tex = it->second;
+
+		memset(fileTxt, 0, 64);
+		sprintf_s(fileTxt, "Font_%d.png", it->first);
+
+		std::string destFile = path + "\\" + fileTxt;
+
+		HRESULT hr = D3DXSaveTextureToFileA(destFile.c_str(), D3DXIFF_PNG, tex, NULL);
+		if (hr != S_OK)
+		{
+			continue;
+		}
+	}
+}
+
 void MainEditor::OnMenu()
 {
 	openCfgFlag = false;
 	saveCfgFlag = false;
 	exportFlag = false;
+	loadFntFlag = false;
+	saveTexsFlag = false;
 	ImGuiIO& io = ImGui::GetIO();
 	if (io.KeyCtrl)
 	{
@@ -920,39 +993,49 @@ void MainEditor::OnMenu()
 			{
 				exportFlag = true;
 			}
+			ImGui::Separator();
 			ImGui::MenuItem(STU("按绝对路径打开"), NULL, &mOpenByAbsPath);
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu(STU("工具")))
 		{
-			//if (ImGui::MenuItem(STU("字体编码计算"), NULL, &mCodeCalcTool))
-			//{
-			//}
-			if (ImGui::MenuItem(STU("预览"), NULL, &mShowTargetTex))
+			ImGui::MenuItem(STU("预览"), NULL, &mShowTargetTex);
+			ImGui::Separator();
+			if (ImGui::MenuItem(STU("拆解字体图片"), NULL, (bool*)NULL, !mFAS))
 			{
+				loadFntFlag = true;
 			}
+			if (ImGui::MenuItem(STU("导出拆解图片"), NULL, (bool*)NULL, mFAS != NULL))
+			{
+				saveTexsFlag = true;
+			}
+
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();
 	}
 }
 
-void MainEditor::OnCodeCalTool()
+void MainEditor::OnFAS()
 {
-	if (!mCodeCalcTool)
-		return;
-	ImGui::Begin(STU("编码计算工具"), &mCodeCalcTool, ImGuiWindowFlags_AlwaysAutoResize);
-	ImGui::Text(STU("输入文字"));
-	ImGui::SameLine();
-	char szTemp[32];
-	memset(szTemp, 0, 32);
-	memcpy(szTemp, mCodeTxt.c_str(), mCodeTxt.length());
-	ImGui::InputText("##code_word", szTemp, 8);
-	if (strlen(szTemp) > 0)
+	if (!mShowFAS && mFAS)
 	{
-		int a = 0;
+		SAFE_DELETE(mFAS);
 	}
-	mCodeTxt = UTS(szTemp);
+	if (!mShowFAS || !mFAS)
+		return;
+	ImGui::Begin(STU("拆分字体图集"), &mShowFAS);
+	std::map<int, IDirect3DTexture9*>::iterator it;
+	for (it = mFAS->mTexs.begin(); it != mFAS->mTexs.end(); ++it)
+	{
+		IDirect3DTexture9* tex = it->second;
+		ImTextureID tex_id = tex;
+		D3DSURFACE_DESC desc;
+		tex->GetLevelDesc(0, &desc);
+		ImGui::Text("%d", it->first);
+		ImGui::SameLine(0.0f, 10.0f);
+		ImGui::Image(tex_id, ImVec2((float)desc.Width, (float)desc.Height), ImVec2(0, 0), ImVec2(1, 1), ImVec4(1, 1, 1, 1), ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+	}
 	ImGui::End();
 }
 
