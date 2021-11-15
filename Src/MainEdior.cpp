@@ -101,6 +101,7 @@ MainEditor::MainEditor(HWND hwnd, LPDIRECT3DDEVICE9 device)
 	mArtFontGroups.clear();
 	mTargetSize[0] = 128;
 	mTargetSize[1] = 128;
+	mMultiGroup = 1;
 	mDefaultSize = 32;
 	mFdPng.ext = "png";
 	mFdCfg.ext = "cfg";
@@ -322,6 +323,37 @@ void MainEditor::OnGUI()
 	ImGui::Begin(STU("图集制作"), &b, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoTitleBar);
 
 	OnMenu();
+
+	ImGui::Text(STU("多组别字体"));
+	ImGui::SameLine();
+	bool multiGroup = mMultiGroup != 0;
+	ImGui::Checkbox("##multiGroup", &multiGroup);
+	mMultiGroup = multiGroup ? 1 : 0;
+
+	if (!multiGroup && mArtFontGroups.size() > 1)
+	{
+		if (ImGui::Button(STU("删除多余的组别")))
+		{
+			ArtFontGroup* first = *(mArtFontGroups.begin());
+			for (size_t i = 1; i < mArtFontGroups.size(); ++i)
+			{
+				ArtFontGroup* group = mArtFontGroups[i];
+				if (group)
+				{
+					SAFE_DELETE(group);
+				}
+			}
+			mArtFontGroups.clear();
+			mArtFontGroups.push_back(first);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button(STU("保持多组别字体")))
+		{
+			mMultiGroup = 1;
+		}
+		ImGui::End();
+		return;
+	}
 
 	ImGui::Text(STU("图片大小"));
 	ImGui::SameLine();
@@ -729,7 +761,7 @@ void ExportFiles(MainEditor* editor, const char* path)
 		{
 			ArtFont* artFont = group->mFontDatas[j];
 			ExportItem* item = new ExportItem();
-			item->mId = index++;
+			item->mId = editor->mMultiGroup == 0 ? artFont->mCode : index++;
 			item->mCode = artFont->mCode;
 			item->mGroupID = group->mId;
 			item->mFontInfo = artFont;
@@ -826,6 +858,10 @@ void SaveCfg(MainEditor* editor, const char* cfg)
 	TiXmlElement* pRootEle = new TiXmlElement("config");
 	doc.LinkEndChild(pRootEle);
 
+	TiXmlElement* multi_group = new TiXmlElement("multi_group");
+	multi_group->SetAttribute("value", editor->mMultiGroup);
+	pRootEle->LinkEndChild(multi_group);
+
 	TiXmlElement* target_size = new TiXmlElement("target_size");
 	target_size->SetAttribute("x", editor->mTargetSize[0]);
 	target_size->SetAttribute("y", editor->mTargetSize[1]);
@@ -870,6 +906,9 @@ void OpenCfg(MainEditor* editor, const char* cfg)
 	if (doc.LoadFile(cfg))
 	{
 		TiXmlElement* pRootEle = doc.RootElement();
+
+		TiXmlElement* multi_group_ele = pRootEle->FirstChildElement("multi_group");
+		editor->mMultiGroup = atoi(multi_group_ele->Attribute("value"));
 
 		TiXmlElement* target_size_ele = pRootEle->FirstChildElement("target_size");
 		editor->mTargetSize[0] = atoi(target_size_ele->Attribute("x"));

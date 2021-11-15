@@ -59,6 +59,7 @@ public:
 	std::vector<ArtFontGroup*> mArtFontGroups;
 	int mTargetSize[2];
 	int mDefaultSize;
+	int mMultiGroup;
 	LPDIRECT3DTEXTURE9 mTargetTexture;
 	LPD3DXMESH mMesh;
 	bool mOpenByAbsPath;
